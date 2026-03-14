@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Privacy & Financial Security — PII Detector (Animated)</title>
+  <style>
+    :root{
+      --bg:#0f1724; --card:#0b1220; --accent:#06b6d4; --muted:#9aa7b2; --success:#10b981; --danger:#ef4444;
+      --glass: rgba(255,255,255,0.03);
+    }
+    *{box-sizing:border-box;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071023 0%, #0a1624 100%);color:#e6eef6}
+
+    .wrap{max-width:1100px;margin:36px auto;padding:28px;border-radius:14px;background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+
+    header{display:flex;gap:16px;align-items:center}
+    .logo{width:64px;height:64px;border-radius:14px;background:linear-gradient(135deg,var(--accent),#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px}
+    h1{margin:0;font-size:20px}
+    p.lead{margin:6px 0 0;color:var(--muted);font-size:13px}
+
+    .grid{display:grid;grid-template-columns:380px 1fr;gap:20px;margin-top:20px}
+
+    .card{background:var(--card);padding:18px;border-radius:12px;box-shadow:inset 0 -1px 0 rgba(255,255,255,0.02)}
+
+    /* upload area */
+    .drop{border:2px dashed rgba(255,255,255,0.04);padding:18px;border-radius:10px;text-align:center;transition:transform 400ms ease,background 300ms}
+    .drop:hover{transform:translateY(-4px)}
+    .drop input{display:none}
+    .btn{display:inline-block;padding:8px 12px;border-radius:8px;background:linear-gradient(90deg,var(--accent),#7c3aed);color:#021022;font-weight:600;text-decoration:none}
+
+    .examples{font-size:13px;color:var(--muted);margin-top:10px}
+
+    textarea#source{width:100%;height:300px;background:transparent;border:1px solid rgba(255,255,255,0.03);padding:12px;border-radius:8px;color:inherit;resize:vertical}
+
+    /* results */
+    .toolbar{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+    .chip{background:var(--glass);padding:6px 8px;border-radius:999px;font-size:13px;color:var(--muted)}
+
+    .results{height:520px;overflow:auto;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.02);background:linear-gradient(0deg,rgba(9,14,21,0.2),transparent)}
+
+    .text-flow{line-height:1.7;font-size:14px;white-space:pre-wrap}
+
+    /* highlighted tokens */
+    .pii{padding:2px 6px;border-radius:6px;margin:0 2px;display:inline-block;position:relative;cursor:pointer;transition:transform 220ms ease}
+    .pii:hover{transform:translateY(-3px)}
+
+    /* pulsing animation for detected items */
+    @keyframes pulse {
+      0%{box-shadow:0 0 0 0 rgba(6,182,212,0.18)}
+      70%{box-shadow:0 0 0 10px rgba(6,182,212,0)}
+      100%{box-shadow:0 0 0 0 rgba(6,182,212,0)}
+    }
+    .pii.detected{animation: pulse 2s infinite;}
+
+    .pii.type-aadhaar{background:linear-gradient(90deg,#fef08a11,#fde68a11);border:1px solid rgba(245,158,11,0.12);color:#ffedcc}
+    .pii.type-pan{background:linear-gradient(90deg,#fbcfe811,#fda4af11);border:1px solid rgba(219,39,119,0.12);color:#ffdfe8}
+    .pii.type-phone{background:linear-gradient(90deg,#bbf7d011,#86efac11);border:1px solid rgba(16,185,129,0.12);color:#e6fff0}
+    .pii.type-email{background:linear-gradient(90deg,#dbeafe11,#bfdbfe11);border:1px solid rgba(59,130,246,0.12);color:#e9f2ff}
+    .pii.type-pin{background:linear-gradient(90deg,#e6e6e611,#c7d2fe11);border:1px solid rgba(148,163,184,0.12);color:#f0f6ff}
+
+    .controls{display:flex;gap:8px;align-items:center;margin-top:12px}
+    .controls button{padding:8px 10px;border-radius:8px;border:0;background:rgba(255,255,255,0.03);color:var(--muted);cursor:pointer}
+    .controls button.primary{background:linear-gradient(90deg,var(--accent),#7c3aed);color:#021022}
+
+    .side-list{display:flex;flex-direction:column;gap:10px}
+    .item{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));border:1px solid rgba(255,255,255,0.02)}
+    .meta{font-size:12px;color:var(--muted)}
+    .tag{font-weight:700;padding:4px 8px;border-radius:8px;font-size:12px}
+
+    /* small responsive */
+    @media (max-width:980px){.grid{grid-template-columns:1fr;}.wrap{margin:12px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">PII</div>
+      <div>
+        <h1>Privacy & Financial Security — PII Detector</h1>
+        <p class="lead">Detects Aadhaar, PAN, Phone, Email and other sensitive fields in text. Review, mask, or redact before sharing.</p>
+      </div>
+    </header>
+
+    <div class="grid">
+      <div class="card">
+        <div class="drop" id="dropArea">
+          <p style="margin:0">Drag & drop text files or paste text below — or click to open the file picker.</p>
+          <label class="btn" for="upload">Choose File</label>
+          <!-- file input (visible only through label) -->
+          <input id="upload" name="file" type="file" accept=".txt,.json,.csv,text/plain,application/json,application/octet-stream" />
+
+          <div class="examples">Tip: For demo, paste sample document text below containing Aadhaar (12 digits), PAN (ABCDE1234F) or 10-digit phone numbers.</div>
+        </div>
+
+        <div style="margin-top:12px">
+          <textarea id="source" placeholder="Paste document text here..." spellcheck="false"></textarea>
+        </div>
+
+        <div class="controls">
+          <button id="detectBtn" class="primary">🔎 Run PII Detection</button>
+          <button id="resetBtn">Reset</button>
+          <button id="exportBtn">⬇ Export Sanitized</button>
+          <div style="flex:1"></div>
+          <div class="chip">Confidence: rule-based + heuristics</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <div class="chip">Detected items: <span id="count">0</span></div>
+          <div class="chip">Masked: <span id="masked">0</span></div>
+          <div class="chip">Redacted: <span id="redacted">0</span></div>
+        </div>
+
+        <div class="results" id="results">
+          <div class="text-flow" id="flow">Paste text and press <strong>Run PII Detection</strong> to see highlights and animated detections.</div>
+        </div>
+
+        <div style="margin-top:12px" class="side-list" id="list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Utility: simple rule-based detectors and confidence heuristics (kept for local fallback)
+    const detectors = [
+      {name:'aadhaar', label:'Aadhaar (12 digits)', pattern: /\b(\d{4}[ \-]?\d{4}[ \-]?\d{4})\b/g, className:'type-aadhaar', score:0.95 },
+      {name:'pan', label:'PAN (ABCDE1234F)', pattern: /\b([A-Z]{5}[0-9]{4}[A-Z])\b/g, className:'type-pan', score:0.92 },
+      {name:'phone', label:'Phone (10 digits)', pattern: /(?:(?:\+91[\-\s]?)?|0)?\b([6-9][0-9]{9})\b/g, className:'type-phone', score:0.9 },
+      {name:'email', label:'Email', pattern: /\b([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})\b/g, className:'type-email', score:0.88 },
+      {name:'pin', label:'PIN Code', pattern: /\b(PIN[:\s]*\d{6}|\b\d{6}\b)/g, className:'type-pin', score:0.65 }
+    ];
+
+    const upload = document.getElementById('upload');
+    const source = document.getElementById('source');
+    const detectBtn = document.getElementById('detectBtn');
+    const flow = document.getElementById('flow');
+    const list = document.getElementById('list');
+    const countEl = document.getElementById('count');
+    const maskedEl = document.getElementById('masked');
+    const redactedEl = document.getElementById('redacted');
+    const exportBtn = document.getElementById('exportBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const dropArea = document.getElementById('dropArea');
+
+    let tokenStore = []; // {id, type, text, start, end, score, masked, redacted, className}
+
+    // Helper: escape HTML
+    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // -----------------------
+    // File input (client-side) - hardened
+    // -----------------------
+    upload.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      const uploadUrl = window.location.origin + '/api/upload';
+      const form = new FormData();
+      form.append('file', file);
+
+      // UI feedback
+      detectBtn.disabled = true;
+      const prevText = detectBtn.innerText;
+      detectBtn.innerText = 'Uploading…';
+
+      try {
+        const res = await fetch(uploadUrl, { method: 'POST', body: form });
+        const contentType = res.headers.get('content-type') || '';
+        let body;
+        if (contentType.includes('application/json')) {
+          body = await res.json();
+        } else {
+          // try to read text body for better error reporting
+          body = await res.text().catch(()=>null);
+        }
+
+        if (!res.ok) {
+          console.error('Upload failed', res.status, body);
+          // show helpful message with server body (if any)
+          alert('Upload failed: ' + res.status + (body ? ' — ' + (typeof body === 'string' ? body : JSON.stringify(body)) : ''));
+          // fallback: read file locally so user can continue testing detection
+          tryLocalFileRead(file);
+          return;
+        }
+
+        // success path (server expected to return { name, size, text } or similar)
+        if (body && typeof body.text === 'string') {
+          source.value = body.text;
+          await runDetection();
+        } else if (body && typeof body === 'object' && typeof body.name === 'string') {
+          // server returned metadata without text — attempt fallback read
+          console.warn('Upload returned metadata but no text; falling back to local read.');
+          tryLocalFileRead(file);
+        } else {
+          // server returned non-json or no text — fallback to local read but inform user
+          console.warn('Upload returned non-json or no text. Fallback to local read.');
+          tryLocalFileRead(file);
+        }
+      } catch (err) {
+        console.error('Upload error', err);
+        alert('Upload error: ' + (err.message || err));
+        // fallback to local read so user isn't blocked
+        tryLocalFileRead(file);
+      } finally {
+        detectBtn.disabled = false;
+        detectBtn.innerText = prevText;
+      }
+    });
+
+    // fallback: read file locally if server upload fails or server doesn't return text
+    function tryLocalFileRead(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        source.value = String(reader.result || '');
+        runDetection().catch(()=>{});
+      };
+      reader.onerror = (e) => {
+        console.error('Local file read error', e);
+        alert('Unable to read file locally.');
+      };
+      reader.readAsText(file);
+    }
+
+    // Drag & drop UX
+    ['dragenter','dragover'].forEach(ev=>dropArea.addEventListener(ev,e=>{e.preventDefault();dropArea.style.transform='translateY(-6px)';}));
+    ['dragleave','drop'].forEach(ev=>dropArea.addEventListener(ev,e=>{e.preventDefault();dropArea.style.transform='';}));
+    dropArea.addEventListener('drop', (e)=>{e.preventDefault();
+      const f = e.dataTransfer.files && e.dataTransfer.files[0];
+      if(f){
+        tryLocalFileRead(f);
+      }
+    });
+
+    function reset(){ tokenStore=[]; flow.innerText = 'Paste text and press Run PII Detection to see highlights and animated detections.'; list.innerHTML=''; countEl.innerText=0; maskedEl.innerText=0; redactedEl.innerText=0; }
+    resetBtn.addEventListener('click', ()=>{ source.value=''; reset(); });
+
+    // -----------------------
+    // Server-side detection
+    // -----------------------
+    async function detectFromAPI(text) {
+      try {
+        const res = await fetch('/api/detect', {
+          method: 'POST',
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text })
+        });
+        if (!res.ok) {
+          const raw = await res.text().catch(()=>null);
+          console.error('Detect API error', res.status, raw);
+          return [];
+        }
+        const data = await res.json();
+        const tokens = (data.tokens || []).map(t => ({
+          id: Number(t.id),
+          type: t.type,
+          label: t.label,
+          text: t.text,
+          start: Number(t.start),
+          end: Number(t.end),
+          score: Number(t.score || 0),
+          className: t.className || ('type-' + (t.type || 'pii')),
+          masked: false,
+          redacted: false
+        }));
+        tokens.sort((a,b)=>a.start-b.start);
+        return tokens;
+      } catch (err) {
+        console.error('detectFromAPI error', err);
+        return [];
+      }
+    }
+
+    // Optional helper: sanitize via server
+    async function sanitize(text, actions) {
+      const res = await fetch('/api/sanitize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, actions })
+      });
+      return res.json();
+    }
+
+    // -----------------------
+    // Run detection
+    // -----------------------
+    async function runDetection(){
+      const text = source.value || '';
+      if(!text.trim()){ alert('Please paste or upload document text for detection.'); return; }
+
+      // Try server-side detection first
+      const tokens = await detectFromAPI(text);
+
+      // If server returned nothing, fallback to client-side regex detection
+      if (!tokens.length) {
+        const local = [];
+        detectors.forEach(det=>{
+          det.pattern.lastIndex = 0;
+          let m;
+          while((m = det.pattern.exec(text)) !== null){
+            const span = m[1] || m[0];
+            const start = m.index + (m[0].indexOf(span));
+            const end = start + span.length;
+            local.push({ id: local.length+1, type:det.name, label:det.label, text:span, start, end, score:det.score, masked:false, redacted:false, className:det.className });
+          }
+        });
+        local.sort((a,b)=>a.start-b.start);
+        tokenStore = local;
+      } else {
+        tokenStore = tokens;
+      }
+
+      tokenStore.forEach(t => { t.masked = false; t.redacted = false; });
+      rebuildDisplay();
+      refreshList();
+      countEl.innerText = tokenStore.length;
+    }
+
+    detectBtn.addEventListener('click', runDetection);
+
+    // -----------------------
+    // UI list and display builders
+    // -----------------------
+    function refreshList(){
+      list.innerHTML = '';
+      let masked=0, redacted=0;
+      tokenStore.forEach(tok=>{
+        const item = document.createElement('div'); item.className='item';
+        const left = document.createElement('div');
+        left.innerHTML = `<div style="font-weight:700">${escapeHtml(tok.label)}</div><div class="meta">${escapeHtml(tok.text)}</div>`;
+        const right = document.createElement('div');
+        const maskBtn = document.createElement('button'); maskBtn.innerText = tok.masked ? 'Unmask' : 'Mask';
+        const redactBtn = document.createElement('button'); redactBtn.innerText = tok.redacted ? 'Undo' : 'Redact';
+        maskBtn.addEventListener('click', ()=>{ toggleMask(tok.id); maskBtn.innerText = tok.masked ? 'Unmask' : 'Mask'; updateCounts(); });
+        redactBtn.addEventListener('click', ()=>{ toggleRedact(tok.id); redactBtn.innerText = tok.redacted ? 'Undo' : 'Redact'; updateCounts(); });
+        right.appendChild(maskBtn); right.appendChild(redactBtn);
+        item.appendChild(left); item.appendChild(right);
+        list.appendChild(item);
+        if(tok.masked) masked++; if(tok.redacted) redacted++;
+      });
+      maskedEl.innerText = masked; redactedEl.innerText = redacted;
+    }
+
+    function updateCounts(){
+      let masked=0, redacted=0; tokenStore.forEach(t=>{ if(t.masked) masked++; if(t.redacted) redacted++; });
+      maskedEl.innerText = masked; redactedEl.innerText = redacted;
+      rebuildDisplay();
+    }
+
+    function toggleMask(id){
+      const t = tokenStore.find(x=>x.id===id); if(!t) return; t.masked = !t.masked; if(t.masked) t.redacted=false; rebuildDisplay(); refreshList(); }
+    function toggleRedact(id){ const t = tokenStore.find(x=>x.id===id); if(!t) return; t.redacted = !t.redacted; if(t.redacted) t.masked=false; rebuildDisplay(); refreshList(); }
+
+    function rebuildDisplay(){
+      const text = source.value;
+      let html = '';
+      let pos = 0;
+      tokenStore.forEach(tok=>{
+        if (Number.isNaN(tok.start) || Number.isNaN(tok.end) || tok.start < pos || tok.start > text.length) {
+          return;
+        }
+        html += escapeHtml(text.slice(pos, tok.start));
+        let content = escapeHtml(tok.text);
+        if(tok.redacted) content = '█'.repeat(Math.max(3, String(tok.text).length));
+        else if(tok.masked){
+          const keep = Math.min(2, String(tok.text).length);
+          const maskedSection = '•'.repeat(Math.max(1, String(tok.text).length - keep));
+          content = maskedSection + escapeHtml(String(tok.text).slice(-keep));
+        }
+        html += `<span class="pii ${tok.className}" data-id="${tok.id}">${content}<sup style="font-size:10px;margin-left:6px;opacity:0.7">${Math.round((tok.score||0)*100)}%</sup></span>`;
+        pos = tok.end;
+      });
+      html += escapeHtml(text.slice(pos));
+      flow.innerHTML = html;
+
+      document.querySelectorAll('.pii').forEach(el=>{ el.addEventListener('click', ()=>{ const id=Number(el.dataset.id); const token=tokenStore.find(t=>t.id===id); if(token) showActionMenu(el, token); }); });
+
+      countEl.innerText = tokenStore.length;
+    }
+
+    function showActionMenu(el, token){
+      const menu = document.createElement('div');
+      menu.style.position='absolute'; menu.style.zIndex=9999; menu.style.padding='8px'; menu.style.borderRadius='8px'; menu.style.background='#07182a'; menu.style.border='1px solid rgba(255,255,255,0.04)';
+      menu.style.boxShadow='0 8px 30px rgba(2,6,23,0.6)';
+      menu.innerHTML = `<div style="font-weight:700;margin-bottom:6px">${escapeHtml(token.label)}</div>
+        <div style="display:flex;gap:6px"><button id="m">${token.masked? 'Unmask':'Mask'}</button><button id="r">${token.redacted? 'Undo':'Redact'}</button><button id="c">Cancel</button></div>`;
+      document.body.appendChild(menu);
+      const rect = el.getBoundingClientRect();
+      menu.style.left = (rect.right + 12) + 'px'; menu.style.top = (window.scrollY + rect.top) + 'px';
+      menu.querySelector('#m').addEventListener('click', ()=>{ toggleMask(token.id); document.body.removeChild(menu); });
+      menu.querySelector('#r').addEventListener('click', ()=>{ toggleRedact(token.id); document.body.removeChild(menu); });
+      menu.querySelector('#c').addEventListener('click', ()=>{ document.body.removeChild(menu); });
+      setTimeout(()=>{ window.addEventListener('click', close); });
+      function close(ev){ if(!menu.contains(ev.target) && ev.target !== el){ try{ document.body.removeChild(menu);}catch(e){} window.removeEventListener('click', close);} }
+    }
+
+    exportBtn.addEventListener('click', ()=>{
+      if(!source.value){ alert('Nothing to export — paste or upload text and run detection first.'); return; }
+      let text = source.value;
+      const byDesc = [...tokenStore].sort((a,b)=>b.start - a.start);
+      byDesc.forEach(tok=>{
+        if(tok.redacted){ text = text.slice(0,tok.start) + '[[REDACTED]]' + text.slice(tok.end); }
+        else if(tok.masked){
+          const keep = Math.min(2, String(tok.text).length);
+          const maskedSection = '•'.repeat(Math.max(1, String(tok.text).length - keep));
+          const replacement = maskedSection + String(tok.text).slice(-keep);
+          text = text.slice(0,tok.start) + replacement + text.slice(tok.end);
+        }
+      });
+      const blob = new Blob([text], {type: 'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download='sanitized.txt'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    });
+
+    // Small friendly demo sample when user first loads
+    window.addEventListener('load', ()=>{
+      source.value = `John Doe
+Address: 12 MG Road, Mumbai - PIN 400001
+Phone: 9876543210
+Email: john.doe@example.com
+Aadhaar: 1234 5678 9012
+PAN: ABCDE1234F
+Note: Do not share sensitive details.`;
+      setTimeout(()=>{ runDetection(); }, 700);
+    });
+  </script>
+</body>
+</html>
